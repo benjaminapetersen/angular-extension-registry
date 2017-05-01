@@ -44,11 +44,8 @@ Output points must be defined in the views like this:
   extension-args="a_relevant_object_for_context"
   extension-limit="2"></div>
 ```
-
-### Data Input
-
 Then the service can be used to register data objects for render.  Two-way data
-binding will apply, output will re-render whenever the UI changes:
+binding will apply, output will re-render whenever the UI changes.
 
 ### Built in types
 
@@ -141,7 +138,54 @@ Currently, there are 4 built-in extension types.  Some quick vanilla examples:
   ].join('')
 }
 
+```
 
+### Sorting
+
+The data inputs will be sorted if a `weight` property is provided.  A convention of leaving
+gaps is recommended in case items resolved at a later time need to be inserted.  The sorting
+function is reasonably resilient, that said it is recommended to keep your data clean.
+
+```javascript
+// valid weights are numbers & strings that cast to a number
+{type:"text",weight: 1},
+{type:"text",weight: 0},
+{type:"text",weight: '6'},
+{type:"text",weight: 5},
+{type:"text",weight: '49'},
+{type:"text",weight: 2},
+{type:"text",weight: -10},
+// recommended
+{type:"text",weight: 40},
+{type:"text",weight: 30},
+{type:"text",weight: 20},
+{type:"text",weight: 10},
+// items without weight treated as weight: 0
+// this is fine & expected when sort order is not important
+{type:"text"},
+{type:"text"},
+// invalid values like these will be treated as weight: 0
+{type:"text",weight: NaN},
+{type:"text",weight: null},
+{type:"text",weight: undefined},
+{type:"text",weight: 'invalid'},
+{type:"text",weight: []},
+{type:"text",weight: {}},
+```
+
+If a custom comparator is desired, the built-in can be overridden in the config phase:
+
+```JavaScript
+  angular.module('myapp', [
+    'extension-registry'
+  ])
+  .config([
+    'extensionRegistryProvider',
+    function(extensionRegistryProvider) {
+      extensionRegistryProvider.setComparator(function(a, b) {
+        return a.weight - b.weight;
+      });
+    });
 ```
 
 ### Adding custom types

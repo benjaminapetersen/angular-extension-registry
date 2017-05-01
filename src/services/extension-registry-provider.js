@@ -9,8 +9,10 @@
         var registry = {},
             subscribers = {},
             keyStart = 1000,
+            push = utils.push,
             split = utils.split,
             slice = utils.slice,
+            sort = utils.sort,
             each = utils.each,
             map = utils.map,
             contains = utils.contains,
@@ -19,9 +21,10 @@
             reduce = utils.reduce,
             ownKeys = utils.ownKeys,
             toArray = utils.toArray,
-            isFunction = utils.isFunction;
+            isFunction = utils.isFunction,
+            isNaN = utils.isNaN;
 
-        // methods available in provider && service context
+
         var
             notify = function() {
               each(toArray(subscribers), function(fn) {
@@ -58,14 +61,25 @@
             },
             clean = function() {
               registry = {};
+            },
+            // default weight assignment comparator,
+            // can override in config with setComparator
+            toWeight = function(value) {
+              value = parseInt(value, 10);
+              return isNaN(value) ? 0 : value;
+            },
+            comparator = function(a, b) {
+              return toWeight(a.weight) - toWeight(b.weight);
+            },
+            setComparator = function(customComparator) {
+              comparator = customComparator;
             };
 
-        // provider context export
         this.add = add;
         this.dump = dump;
         this.clean = clean;
+        this.setComparator = setComparator;
 
-        // service context export
         this.$get = [
             '$log',
             '$q',
@@ -112,7 +126,8 @@
                                           if(memo.length >= limit) {
                                             return memo;
                                           }
-                                          memo.push(next);
+                                          push(memo, next);
+                                          sort(memo, comparator);
                                           return memo;
                                         }, []);
                                       });
@@ -130,6 +145,7 @@
                 clean: clean
               };
             }];
+
       }
     ]);
 
