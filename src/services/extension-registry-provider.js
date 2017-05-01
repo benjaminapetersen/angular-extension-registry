@@ -9,8 +9,10 @@
         var registry = {},
             subscribers = {},
             keyStart = 1000,
+            push = utils.push,
             split = utils.split,
             slice = utils.slice,
+            sort = utils.sort,
             each = utils.each,
             map = utils.map,
             contains = utils.contains,
@@ -19,7 +21,41 @@
             reduce = utils.reduce,
             ownKeys = utils.ownKeys,
             toArray = utils.toArray,
-            isFunction = utils.isFunction;
+            isFunction = utils.isFunction,
+            isNaN = utils.isNaN,
+            isString = utils.isString,
+            isNumber = utils.isNumber,
+            isUndefined = utils.isUndefined,
+            // TODO: externalize this validator
+            // so that a custom sorter could be provided
+            invalidVal = -9999,
+            strToUsableNum = function(val) {
+              var test = Number(val);
+              return isNaN(test) ?
+                      invalidVal :
+                      test;
+            },
+            // ensures any provided weight is usable.
+            // see the unit test for weight
+            // - numbers returned as numbers
+            // - undefined returned as -1 (explicit 0 has greater weight)
+            // - strings returned as numbers || -9999 (invalid)
+            // - all other objects returned as -9999 (invalid)
+            // this function is intentionally resilient as it is assumed
+            // extensions could be registered by various parties.  Those
+            // who use sensible weights should be able to trust sorting
+            // placement
+            toWeight = function(value) {
+              return isNaN(value) ?
+                      invalidVal :
+                      isNumber(value) ?
+                        value :
+                        isString(value) ?
+                          strToUsableNum(value) :
+                          isUndefined(value) ?
+                            -1 :
+                            invalidVal;
+            };
 
         // methods available in provider && service context
         var
@@ -112,7 +148,13 @@
                                           if(memo.length >= limit) {
                                             return memo;
                                           }
-                                          memo.push(next);
+                                          push(memo, next);
+                                          // - heaviest falls.
+                                          // - no weight: -1
+                                          // - invalid weight: -9999
+                                          sort(memo, function(a, b) {
+                                            return toWeight(a.weight) - toWeight(b.weight);
+                                          });
                                           return memo;
                                         }, []);
                                       });

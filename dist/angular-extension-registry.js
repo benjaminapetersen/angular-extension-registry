@@ -11,28 +11,57 @@ angular.module('extension-registry', [
     ])
     // ONLY constants are available to a provider,
     // thus, this collection of functions is a constant.
-    .constant('extensionRegistryUtils', (function() {
+    .constant('extensionRegistryUtils', (function(undefined) {
 
-      var // utils
+      var // to string vals
+          numToString = '[object Number]',
+          arrToString = '[object Array]',
+          objToString = '[object Object]',
+          funcToString = '[object Function]',
+          strToString = '[object String]',
+          // utils
           unbind = Function.prototype.bind.bind(Function.prototype.call),
           // strings
           split = unbind(String.prototype.split),
           // is of type
           toString = unbind(Object.prototype.toString),
+          isString = function(obj) {
+            return toString(obj) === strToString;
+          },
           isArray = function(obj) {
-            return toString(obj) === '[object Array]';
+            return toString(obj) === arrToString;
           },
           isObject = function(obj) {
-            return toString(obj) === '[object Object]';
+            return toString(obj) === objToString;
           },
           isNumber = function(obj) {
-            return toString(obj) === '[object Number]';
+            return toString(obj) === numToString;
           },
           isFunction = function(obj) {
-            return toString(obj) === '[object Function]';
+            return toString(obj) === funcToString;
+          },
+          // isNaN hels with the quirks of NaN
+          // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/isNaN
+          //  return Number.isNaN(Number(value));
+          // https://github.com/lodash/lodash/blob/4.17.4/lodash.js#L11906
+          isNaN = function(val) {
+            // coercion is intentional here
+            return isNumber(val) && val != +val; // jshint ignore:line
+          },
+          isUndefined = function(val) {
+            return val === undefined;
+          },
+          isNull = function(val) {
+            return val === null;
+          },
+          isNil = function(val) {
+            // coercion is intentional here
+            return val == null;  // jshint ignore:line
           },
           // arrays
+          push = unbind(Array.prototype.push),
           slice = unbind(Array.prototype.slice),
+          sort = unbind(Array.prototype.sort),
           each = function(arr, fn) {
             for(var i = 0; i < arr.length; i++) {
               fn(arr[i], i, arr);
@@ -113,7 +142,9 @@ angular.module('extension-registry', [
               // strings
               split: split,
               // arrays/lists
+              push: push,
               slice: slice,
+              sort: sort,
               contains: contains,
               each: each,
               map: map,
@@ -122,9 +153,14 @@ angular.module('extension-registry', [
               flatten: flatten,
               ownKeys: ownKeys,
               toArray: toArray,
+              isString: isString,
               isFunction: isFunction,
               isObject: isObject,
-              isNumber: isNumber
+              isNumber: isNumber,
+              isNaN: isNaN,
+              isNull: isNull,
+              isUndefined: isUndefined,
+              isNil: isNil
             };
     })());
 
@@ -141,8 +177,10 @@ angular.module('extension-registry', [
         var registry = {},
             subscribers = {},
             keyStart = 1000,
+            push = utils.push,
             split = utils.split,
             slice = utils.slice,
+            sort = utils.sort,
             each = utils.each,
             map = utils.map,
             contains = utils.contains,
@@ -151,7 +189,41 @@ angular.module('extension-registry', [
             reduce = utils.reduce,
             ownKeys = utils.ownKeys,
             toArray = utils.toArray,
-            isFunction = utils.isFunction;
+            isFunction = utils.isFunction,
+            isNaN = utils.isNaN,
+            isString = utils.isString,
+            isNumber = utils.isNumber,
+            isUndefined = utils.isUndefined,
+            // TODO: externalize this validator
+            // so that a custom sorter could be provided
+            invalidVal = -9999,
+            strToUsableNum = function(val) {
+              var test = Number(val);
+              return isNaN(test) ?
+                      invalidVal :
+                      test;
+            },
+            // ensures any provided weight is usable.
+            // see the unit test for weight
+            // - numbers returned as numbers
+            // - undefined returned as -1 (explicit 0 has greater weight)
+            // - strings returned as numbers || -9999 (invalid)
+            // - all other objects returned as -9999 (invalid)
+            // this function is intentionally resilient as it is assumed
+            // extensions could be registered by various parties.  Those
+            // who use sensible weights should be able to trust sorting
+            // placement
+            toWeight = function(value) {
+              return isNaN(value) ?
+                      invalidVal :
+                      isNumber(value) ?
+                        value :
+                        isString(value) ?
+                          strToUsableNum(value) :
+                          isUndefined(value) ?
+                            -1 :
+                            invalidVal;
+            };
 
         // methods available in provider && service context
         var
@@ -244,7 +316,13 @@ angular.module('extension-registry', [
                                           if(memo.length >= limit) {
                                             return memo;
                                           }
-                                          memo.push(next);
+                                          push(memo, next);
+                                          // - heaviest falls.
+                                          // - no weight: -1
+                                          // - invalid weight: -9999
+                                          sort(memo, function(a, b) {
+                                            return toWeight(a.weight) - toWeight(b.weight);
+                                          });
                                           return memo;
                                         }, []);
                                       });

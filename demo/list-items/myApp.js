@@ -24,6 +24,6 @@
       //  <extension-point extension-type="text <new-type>"
       extensionRegistry.addType('li', '<li>{{item.text}}</li>');
     }
-  ])
+  ]);
 
 })();

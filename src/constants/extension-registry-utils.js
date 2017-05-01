@@ -7,28 +7,57 @@
     ])
     // ONLY constants are available to a provider,
     // thus, this collection of functions is a constant.
-    .constant('extensionRegistryUtils', (function() {
+    .constant('extensionRegistryUtils', (function(undefined) {
 
-      var // utils
+      var // to string vals
+          numToString = '[object Number]',
+          arrToString = '[object Array]',
+          objToString = '[object Object]',
+          funcToString = '[object Function]',
+          strToString = '[object String]',
+          // utils
           unbind = Function.prototype.bind.bind(Function.prototype.call),
           // strings
           split = unbind(String.prototype.split),
           // is of type
           toString = unbind(Object.prototype.toString),
+          isString = function(obj) {
+            return toString(obj) === strToString;
+          },
           isArray = function(obj) {
-            return toString(obj) === '[object Array]';
+            return toString(obj) === arrToString;
           },
           isObject = function(obj) {
-            return toString(obj) === '[object Object]';
+            return toString(obj) === objToString;
           },
           isNumber = function(obj) {
-            return toString(obj) === '[object Number]';
+            return toString(obj) === numToString;
           },
           isFunction = function(obj) {
-            return toString(obj) === '[object Function]';
+            return toString(obj) === funcToString;
+          },
+          // isNaN hels with the quirks of NaN
+          // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/isNaN
+          //  return Number.isNaN(Number(value));
+          // https://github.com/lodash/lodash/blob/4.17.4/lodash.js#L11906
+          isNaN = function(val) {
+            // coercion is intentional here
+            return isNumber(val) && val != +val; // jshint ignore:line
+          },
+          isUndefined = function(val) {
+            return val === undefined;
+          },
+          isNull = function(val) {
+            return val === null;
+          },
+          isNil = function(val) {
+            // coercion is intentional here
+            return val == null;  // jshint ignore:line
           },
           // arrays
+          push = unbind(Array.prototype.push),
           slice = unbind(Array.prototype.slice),
+          sort = unbind(Array.prototype.sort),
           each = function(arr, fn) {
             for(var i = 0; i < arr.length; i++) {
               fn(arr[i], i, arr);
@@ -109,7 +138,9 @@
               // strings
               split: split,
               // arrays/lists
+              push: push,
               slice: slice,
+              sort: sort,
               contains: contains,
               each: each,
               map: map,
@@ -118,9 +149,14 @@
               flatten: flatten,
               ownKeys: ownKeys,
               toArray: toArray,
+              isString: isString,
               isFunction: isFunction,
               isObject: isObject,
-              isNumber: isNumber
+              isNumber: isNumber,
+              isNaN: isNaN,
+              isNull: isNull,
+              isUndefined: isUndefined,
+              isNil: isNil
             };
     })());
 

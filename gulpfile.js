@@ -1,6 +1,6 @@
 'use strict';
 
-var gulp = require('gulp'),
+let gulp = require('gulp'),
     gutil = require('gulp-util'),
     filesize = require('gulp-filesize'),
     uglify = require('gulp-uglify'),
@@ -18,16 +18,17 @@ var gulp = require('gulp'),
     argv = require('yargs').argv;
 
 // process.argv is an option for collecting cli arguments, but not ideal.
-var browsers = argv.browsers ?
+let browsers = argv.browsers ?
                   argv.browsers.split(',') :
                   // PhantomJS, Chrome, Firefox, etc
                   ['Firefox'];
 
-var match = {
+let match = {
   recurse: '**/*'
 };
 
-var src = './src/',
+let baseDir = './',
+    src = './src/',
     dist = './dist/',
     demos = './demo/',
     tmp = './.tmp/',
@@ -35,18 +36,18 @@ var src = './src/',
     test = './test/',
     testRelative = '/test/';
 
-var srcAll = src + match.recurse,
+let srcAll = src + match.recurse,
     distAll = dist +match.recurse,
     demoAll = demos + match.recurse,
     tmpAll = tmpBuild + match.recurse;
 
-var srcJS = src + match.recurse + '.js',
+let srcJS = src + match.recurse + '.js',
     srcView = src + '/views/'+ match.recurse + '.html';
 
-var outputJS = 'angular-extension-registry.js',
+let outputJS = 'angular-extension-registry.js',
     outputTpl = 'compiled-templates.js';
 
-var buildSource = [
+let buildSource = [
     src + 'extension-registry.js',
     src + 'constants/extension-registry-utils.js',
     src + 'services/extension-registry-provider.js',
@@ -54,13 +55,13 @@ var buildSource = [
     src + 'directives/extension-renderer.js'
   ];
 
-var protocol = 'http://',
+let protocol = 'http://',
     host = 'localhost',
     serverPort = 9005,
     // will use when we setup e2e-test
     baseUrl = protocol + host + ':' + serverPort;
 
-var concatSource = function(outputDest) {
+let concatSource = (outputDest) => {
   return gulp
           .src(buildSource)
           .pipe(concat(outputJS))
@@ -68,7 +69,7 @@ var concatSource = function(outputDest) {
           .pipe(gulp.dest(outputDest || dist));
 };
 
-var minifyDist = function(outputDest) {
+let minifyDist = (outputDest) => {
   return gulp
           .src(dist + outputJS)
           .pipe(uglify().on('error', gutil.log))
@@ -77,7 +78,7 @@ var minifyDist = function(outputDest) {
           .pipe(gulp.dest(outputDest || dist));
 };
 
-var cacheTemplates = function(outputDest) {
+let cacheTemplates = (outputDest) => {
   return gulp
           .src(srcView)
           .pipe(templateCache({
@@ -89,35 +90,35 @@ var cacheTemplates = function(outputDest) {
 };
 
 
-gulp.task('clean', function() {
-  return del([distAll, tmpAll], function(err, paths) {
+gulp.task('clean', () => {
+  return del([distAll, tmpAll], (err, paths) => {
     return gutil.log('cleaned files/folders:\n', paths.join('\n'), gutil.colors.green());
   });
 });
 
-gulp.task('jshint', function() {
+gulp.task('jshint', () => {
   return gulp
           .src(srcJS)
           .pipe(jshint())
           .pipe(jshint.reporter(stylish));
 });
 
-gulp.task('templates', ['clean'], function () {
+gulp.task('templates', ['clean'], () => {
   return cacheTemplates();
 });
 
-gulp.task('build', ['clean','templates', 'jshint'], function () {
+gulp.task('build', ['clean','templates', 'jshint'], () => {
   return concatSource();
 });
 
-gulp.task('min', ['build', 'templates'], function() {
+gulp.task('min', ['build', 'templates'], () => {
     return minifyDist();
 });
 
-gulp.task('serve', function() {
+gulp.task('serve', () => {
   browserSync({
      server: {
-       baseDir: './'
+       baseDir: baseDir
      }
    });
 
@@ -126,14 +127,14 @@ gulp.task('serve', function() {
 });
 
 
-gulp.task('_tmp-build', function() {
+gulp.task('_tmp-build', () => {
   return concatSource(tmpBuild);
 });
-gulp.task('_tmp-templates', function() {
+gulp.task('_tmp-templates', () => {
   return cacheTemplates(tmpBuild);
 });
 
-gulp.task('_tmp-min', ['_tmp-build', '_tmp-templates'], function() {
+gulp.task('_tmp-min', ['_tmp-build', '_tmp-templates'], () => {
   return minifyDist(tmpBuild);
 });
 
@@ -141,11 +142,11 @@ gulp.task('_tmp-min', ['_tmp-build', '_tmp-templates'], function() {
 // at present this task exists for travis to use to before
 // running ./validate.sh to diff our dist against ./.tmp/build
 // and validate that templates have been cached, js minified, etc.
-gulp.task('prep-diff', ['_tmp-min'], function() {
+gulp.task('prep-diff', ['_tmp-min'], () => {
   // nothing here atm.
 });
 
-gulp.task('validate-dist', ['prep-diff'], function() {
+gulp.task('validate-dist', ['prep-diff'], () => {
   // validation script to verify ./dist and ./tmp/build are equals
   shell.task([
     './validate.sh'
@@ -169,7 +170,7 @@ gulp.task('validate-dist', ['prep-diff'], function() {
 // });
 
 // for integration testing, uses phantomJS
-gulp.task('test-unit', function(done) {
+gulp.task('test-unit', (done) => {
     new KarmaServer({
       configFile:  __dirname  + testRelative + 'karma.conf.js',
       port: serverPort,
@@ -178,7 +179,7 @@ gulp.task('test-unit', function(done) {
 });
 
 // run all the tests, unit first, then e2e
-gulp.task('test', ['test-unit'], function() {
+gulp.task('test', ['test-unit'], () => {
   // just runs the other tests
 });
 
